@@ -4,6 +4,7 @@ using System.Collections;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using NetworkUtil;
 
 public class NetworkClient : MonoBehaviour {
 	private Socket m_Socket;
@@ -42,9 +43,9 @@ public class NetworkClient : MonoBehaviour {
 			byte[] data = new byte[1 + sizeof(float) * 7];
 			data[0] = (byte) MessageType.SyncTransform;
 
-			int cursor = 1;
-			NetworkUtil.WriteVector3(ref cursor, ref data, transform.position);
-			NetworkUtil.WriteQuaternion(ref cursor, ref data, transform.rotation);
+			ByteWriter byteWriter = new ByteWriter(data, 1);
+			byteWriter.WriteVector3(transform.position);
+			byteWriter.WriteQuaternion(transform.rotation);
 
 			try {
 				m_Socket.Send(data, data.Length, 0);
