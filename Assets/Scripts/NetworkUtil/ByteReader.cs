@@ -18,7 +18,7 @@ namespace NetworkUtil {
 			}
 		}
 
-		public ByteReader(byte[] dataSource, int initOffset) {
+		public ByteReader(byte[] dataSource, int initOffset = 0) {
 			this.m_DataSource = dataSource;
 			this.m_Cursor = initOffset;
 		}

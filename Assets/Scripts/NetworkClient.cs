@@ -11,12 +11,11 @@ public class NetworkClient : MonoBehaviour {
 	public string ipAddress = "127.0.0.1";
 	public const int port = 1337;
 	public float m_SyncRate = 1f;
+	public int clientID;
 
 	void Start() {
 		InitializeSocket();
 		Connect();
-		
-		StartCoroutine(CoSyncTransform());
 	}
 
 	void InitializeSocket() {
@@ -30,9 +29,27 @@ public class NetworkClient : MonoBehaviour {
 			IPAddress ipAddr = System.Net.IPAddress.Parse(ipAddress);
 			IPEndPoint ipEndPoint = new System.Net.IPEndPoint(ipAddr, port);
 			m_Socket.Connect(ipEndPoint);
+
+			ReceiveID();
 		}
 		catch(SocketException e) {
 			Debug.Log("Failed to connect: " + e.ToString());
+		}
+	}
+
+	void ReceiveID() {
+		try {
+			byte[] recvBytes = new byte[2000];
+			m_Socket.Receive(recvBytes);
+
+			ByteReader byteReader = new ByteReader(recvBytes);
+			this.clientID = byteReader.ReadInt();
+			Debug.Log("Received ClientID: " + this.clientID);
+
+			StartCoroutine(CoSyncTransform());
+		}
+		catch(SocketException e) {
+			Debug.Log("Failed to receive: " + e.ToString());
 		}
 	}
 
@@ -40,10 +57,11 @@ public class NetworkClient : MonoBehaviour {
 		while(true) {
 			if(m_Socket == null) yield break;
 
-			byte[] data = new byte[1 + sizeof(float) * 7];
+			byte[] data = new byte[1 + sizeof(int) + sizeof(float) * 7];
 			data[0] = (byte) MessageType.SyncTransform;
 
 			ByteWriter byteWriter = new ByteWriter(data, 1);
+			byteWriter.WriteInt(this.clientID);
 			byteWriter.WriteVector3(transform.position);
 			byteWriter.WriteQuaternion(transform.rotation);
 
@@ -64,18 +82,4 @@ public class NetworkClient : MonoBehaviour {
 			m_Socket = null;
 		}
 	}
-
-	// TODO: Implement receive section
-	// void ReceiveTestData() {
-	// 	try {
-	// 		byte[] recvBytes = new byte[2000];
-	// 		m_Socket.Receive(recvBytes);
-
-	// 		string decodedData = Encoding.Default.GetString(recvBytes);
-	// 		Debug.Log(string.Format("Received: {0}", decodedData));
-	// 	}
-	// 	catch(SocketException e) {
-	// 		Debug.Log("Failed to receive: " + e.ToString());
-	// 	}
-	// }
 }
