@@ -1,3 +1,4 @@
 ﻿public enum MessageType {
-	SyncTransform = 0
+	Instantiate = 0,
+	SyncTransform = 1
 }

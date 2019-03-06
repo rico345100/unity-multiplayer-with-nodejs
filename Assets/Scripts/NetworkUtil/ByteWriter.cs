@@ -71,8 +71,9 @@ namespace NetworkUtil {
 		public void WriteBytes(byte[] byteArray) {
 			for(int i = 0; i < byteArray.Length; i++) {
 				m_DataSource[i + m_Cursor] = byteArray[i];
-				m_Cursor++;
 			}
+
+			m_Cursor += byteArray.Length;
 		}
 
 		// Write byte
