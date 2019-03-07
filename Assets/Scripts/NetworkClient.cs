@@ -5,12 +5,12 @@ using System.Net.Sockets;
 using NetworkUtil;
 
 public class NetworkClient : MonoBehaviour {
-	public int objectID = 0;
+	public int localID = 0;
 	public float m_SyncRate = 1f;
 	public bool isLocal = false;
 
 	void Start() {
-		Debug.Log("Assigned ObjectID: " + this.objectID);
+		Debug.Log("Assigned ID: " + this.localID);
 		// StartCoroutine(CoSyncTransform());
 	}
 
@@ -21,7 +21,7 @@ public class NetworkClient : MonoBehaviour {
 			byteWriter.WriteVector3(transform.position);
 			byteWriter.WriteQuaternion(transform.rotation);
 
-			// NetworkManager.Instance.SendMessage(objectID, MessageType.SyncTransform, data);
+			// NetworkManager.Instance.SendMessage(localID, MessageType.SyncTransform, data);
 			yield return new WaitForSecondsRealtime(m_SyncRate);
 		}
 	}

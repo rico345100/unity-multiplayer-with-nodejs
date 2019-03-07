@@ -8,7 +8,7 @@ using UnityEngine.Events;
 
 public class NetworkManager : MonoBehaviour {
 	private static NetworkManager m_Instance;
-	private static int objectId = 0;
+	private static int localIDCounter = 0;
 	private Socket m_Socket;
 	private bool m_Active = false;
 	private List<NetworkClient> m_NetworkClients = new List<NetworkClient>();
@@ -47,8 +47,8 @@ public class NetworkManager : MonoBehaviour {
 	[HideInInspector]
 	public UnityEvent onConnected;
 
-	public static int AssignObjectID() {
-		return objectId++;
+	public static int AssignLocalID() {
+		return localIDCounter++;
 	}
 
 	void Awake() {
@@ -120,8 +120,8 @@ public class NetworkManager : MonoBehaviour {
 	void DispatchMessage(byte[] data) {
 		ByteReader byteReader = new ByteReader(data);
 		MessageType messageType = (MessageType) byteReader.ReadByte();
-		int senderID = byteReader.ReadInt();
-		int objectID = byteReader.ReadInt();
+		int clientID = byteReader.ReadInt();
+		int localID = byteReader.ReadInt();
 
 		Debug.Log("Receive Message");
 		Debug.Log("MessageType: " + messageType);
@@ -148,12 +148,12 @@ public class NetworkManager : MonoBehaviour {
 		}
 	}
 
-	public void BroadcastMessage(int objectId, MessageType messageType, byte[] data) {
+	public void BroadcastMessage(int localID, MessageType messageType, byte[] data) {
 		byte[] sendingData = new byte[1 + sizeof(int) * 2 + data.Length];
 		ByteWriter byteWriter = new ByteWriter(sendingData);
 		byteWriter.WriteByte((byte) messageType);
 		byteWriter.WriteInt(this.clientID);
-		byteWriter.WriteInt(objectId);
+		byteWriter.WriteInt(localID);
 		byteWriter.WriteBytes(data);
 
 		try {
