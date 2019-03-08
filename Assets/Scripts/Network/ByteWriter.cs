@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace NetworkUtil {
+namespace Network {
 	public class ByteWriter: ICursor {
 		private int m_Cursor = 0;
 		private byte[] m_DataSource;

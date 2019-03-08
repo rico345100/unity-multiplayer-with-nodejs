@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace NetworkUtil {
+namespace Network {
 	public static class ByteIO {
 		// Write Int32 into specified offset
 		public static void WriteInt(ref byte[] data, int offset, int variable) {

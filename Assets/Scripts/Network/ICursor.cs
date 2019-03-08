@@ -1,4 +1,4 @@
-﻿namespace NetworkUtil {
+﻿namespace Network {
 	interface ICursor {
 		int Cursor {
 			get;

@@ -1,8 +1,9 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using NetworkUtil;
+using Network;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -11,7 +12,7 @@ public class NetworkManager : MonoBehaviour {
 	private static int localIDCounter = 0;
 	private Socket m_Socket;
 	private bool m_Active = false;
-	private List<NetworkClient> m_NetworkClients = new List<NetworkClient>();
+	private List<NetworkObject> m_NetworkObjects = new List<NetworkObject>();
 
 	[Header("Network Settings")]
 	public string ipAddress = "127.0.0.1";
@@ -35,9 +36,9 @@ public class NetworkManager : MonoBehaviour {
 			return m_Socket;
 		}
 	}
-	public List<NetworkClient> NetworkClients {
+	public List<NetworkObject> NetworkObjects {
 		get {
-			return m_NetworkClients;
+			return m_NetworkObjects;
 		}
 	}
 
@@ -59,7 +60,10 @@ public class NetworkManager : MonoBehaviour {
 		m_Instance = this;
 	}
 
-	void Start() {
+	IEnumerator Start() {
+		// Give Some delays to other GameObject can set Event handlers
+		yield return new WaitForSecondsRealtime(1f);
+
 		InitializeSocket();
 		Connect();
 	}
@@ -148,12 +152,15 @@ public class NetworkManager : MonoBehaviour {
 		}
 	}
 
-	public void BroadcastMessage(int localID, MessageType messageType, byte[] data) {
-		byte[] sendingData = new byte[1 + sizeof(int) * 2 + data.Length];
+	public void BroadcastMessage(MessageType messageType, byte[] data) {
+		// Byte Order
+		// byte MessageType
+		// int clientID
+		// byte[] data
+		byte[] sendingData = new byte[sizeof(byte) + sizeof(int) + data.Length];
 		ByteWriter byteWriter = new ByteWriter(sendingData);
 		byteWriter.WriteByte((byte) messageType);
 		byteWriter.WriteInt(this.clientID);
-		byteWriter.WriteInt(localID);
 		byteWriter.WriteBytes(data);
 
 		try {
@@ -162,6 +169,58 @@ public class NetworkManager : MonoBehaviour {
 		catch(SocketException e) {
 			Debug.Log("Failed to send: " + e.ToString());
 		}
+	}
+
+	public GameObject Instantiate(InstantiateType instantiateType, Vector3 spawnPos, Quaternion spawnRot) {
+		// Byte Order
+		// int localID
+		// Vector3 instantiateType
+		// Vecotr3 spawnPos
+		// Quaternion spawnRot
+		byte[] sendingData = new byte[sizeof(int) + sizeof(byte) + sizeof(float) * 7];
+		ByteWriter byteWriter = new ByteWriter(sendingData);
+		byteWriter.WriteInt(localIDCounter);
+		byteWriter.WriteByte((byte) instantiateType);
+		byteWriter.WriteVector3(spawnPos);
+		byteWriter.WriteQuaternion(spawnRot);
+
+		Debug.Log("Instantiating Object...");
+		Debug.Log("Assigned LocalID: " + (localIDCounter));
+
+		BroadcastMessage(MessageType.Instantiate, sendingData);
+
+		// Actual instantiate from Unity
+		GameObject instance = GameObject.Instantiate(GetPrefab(instantiateType), spawnPos, spawnRot);
+
+		NetworkObject networkObject = instance.GetComponent<NetworkObject>();
+
+		if(networkObject == null) {
+			throw new System.NullReferenceException("Object must have NetworkObject Component.");
+		}
+
+		networkObject.isLocal = true;
+		networkObject.localID = localIDCounter;
+
+		m_NetworkObjects.Add(networkObject);
+
+		// Increase LocalID Counter
+		localIDCounter++;
+
+		return instance;
+	}
+
+	GameObject InstantiateFromNetwork(InstantiateType instantiateType, int clientID, int localID, Vector3 spawnPos, Quaternion spawnRot) {
+		Debug.Log("Got Instantiate Message");
+		Debug.Log("ClientID: " + clientID);
+		Debug.Log("LocalID: " + localID);
+		Debug.Log("Type: " + instantiateType);
+
+		// TODO: Instantiate
+		// TODO: Set isLocal false
+		// TODO: Set clientID and localID
+		// TODO: Set Transform
+
+		return null;
 	}
 
 	void OnApplicationQuit() {

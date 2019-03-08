@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using NetworkUtil;
+using Network;
 
 public class GameManager : MonoBehaviour {
 	[Header("Lobby Refs")]
@@ -12,16 +12,11 @@ public class GameManager : MonoBehaviour {
 
 	void Start() {
 		NetworkManager.Instance.onConnected.AddListener(() => {
-			lobbyCam.SetActive(false);
-			// TODO: Spawn Player through Network
-			
-			// Test Send
-			byte[] data = new byte[sizeof(float) * 7];
-			ByteWriter byteWriter = new ByteWriter(data);
-			byteWriter.WriteVector3(transform.position);
-			byteWriter.WriteQuaternion(transform.rotation);
+			Debug.Log("Connected to Network!");
+			Debug.Log("Creating Player...");
 
-			NetworkManager.Instance.BroadcastMessage(0, MessageType.SyncTransform, data);
+			lobbyCam.SetActive(false);
+			NetworkManager.Instance.Instantiate(InstantiateType.Player, spawnPoint.position, spawnPoint.rotation);
 		});
 	}
 }

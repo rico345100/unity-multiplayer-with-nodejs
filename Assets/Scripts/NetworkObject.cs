@@ -2,9 +2,10 @@
 using UnityEngine.UI;
 using System.Collections;
 using System.Net.Sockets;
-using NetworkUtil;
+using Network;
 
-public class NetworkClient : MonoBehaviour {
+public class NetworkObject : MonoBehaviour {
+	// Expose these values just for debugging purpose
 	public int localID = 0;
 	public float m_SyncRate = 1f;
 	public bool isLocal = false;
