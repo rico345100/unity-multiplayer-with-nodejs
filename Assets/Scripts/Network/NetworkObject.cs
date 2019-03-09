@@ -6,12 +6,12 @@ using Network;
 
 public class NetworkObject : MonoBehaviour {
 	// Expose these values just for debugging purpose
-	public int localID = 0;
+	public int clientID;
+	public int localID;
 	public float m_SyncRate = 1f;
 	public bool isLocal = false;
 
 	void Start() {
-		Debug.Log("Assigned ID: " + this.localID);
 		// StartCoroutine(CoSyncTransform());
 	}
 

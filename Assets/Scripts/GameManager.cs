@@ -12,7 +12,7 @@ public class GameManager : MonoBehaviour {
 
 	void Start() {
 		NetworkManager.Instance.onConnected.AddListener(() => {
-			Debug.Log("Connected to Network!");
+			Debug.Log("Connected.");
 			Debug.Log("Creating Player...");
 
 			lobbyCam.SetActive(false);
