@@ -981,9 +981,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: edd2f1b02de5c7349abdf8c7ddc14360, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ipAddress: 127.0.0.1
-  m_SyncRate: 1
   clientID: 0
+  localID: 0
+  m_SyncRate: 1
+  isLocal: 0
 --- !u!146 &146179737344297116
 WheelCollider:
   m_ObjectHideFlags: 1

@@ -152,8 +152,11 @@ public class NetworkManager : MonoBehaviour {
 			case MessageType.ServerRequestObjectSyncComplete:
 				HandleNetworkObjectSyncComplete(data);
 				break;
+			case MessageType.DestroyNetworkObjects:
+				DestroyNetworkObjects(data);
+				break;
 			case MessageType.Instantiate:
-				// TODO: Implement Instantiation
+				HandleInstantiate(data);
 				break;
 			case MessageType.SyncTransform:
 				// TODO: Implement Sync Transform
@@ -194,6 +197,31 @@ public class NetworkManager : MonoBehaviour {
 		ScheduleTask(new Task(delegate {
 			onObjectSync.Invoke();
 		}));
+	}
+
+	void DestroyNetworkObjects(byte[] data) {
+		ByteReader byteReader = new ByteReader(data);
+		MessageType messageType = (MessageType) byteReader.ReadByte();
+		int clientID = byteReader.ReadInt();
+
+		foreach(NetworkObject networkObject in m_NetworkObjects) {
+			if(networkObject.clientID == clientID) {
+				m_NetworkObjects.Remove(networkObject);
+				Destroy(networkObject.gameObject);
+			}
+		}
+	}
+
+	void HandleInstantiate(byte[] data) {
+		ByteReader byteReader = new ByteReader(data);
+		MessageType messageType = (MessageType) byteReader.ReadByte();
+		int clientID = byteReader.ReadInt();
+		int localID = byteReader.ReadInt();
+		InstantiateType instanceType = (InstantiateType) byteReader.ReadByte();
+		Vector3 spawnPos = byteReader.ReadVector3();
+		Quaternion spawnRot = byteReader.ReadQuaternion();
+
+		InstantiateFromNetwork(instanceType, clientID, localID, spawnPos, spawnRot);
 	}
 
 	GameObject GetPrefab(InstantiateType type) {

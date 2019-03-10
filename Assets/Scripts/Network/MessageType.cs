@@ -5,6 +5,8 @@
 		ServerRequestObjectSync = 11,
 		ServerRequestObjectSyncComplete = 12,
 		Instantiate = 20,
+		Destroy = 21,
+		DestroyNetworkObjects = 22,
 		SyncTransform = 30
 	}
 }
