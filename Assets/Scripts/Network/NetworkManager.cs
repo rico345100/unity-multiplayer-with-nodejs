@@ -153,10 +153,14 @@ public class NetworkManager : MonoBehaviour {
 				HandleNetworkObjectSyncComplete(data);
 				break;
 			case MessageType.DestroyNetworkObjects:
-				DestroyNetworkObjects(data);
+				ScheduleTask(new Task(delegate {
+					DestroyNetworkObjects(data);
+				}));
 				break;
 			case MessageType.Instantiate:
-				HandleInstantiate(data);
+				ScheduleTask(new Task(delegate {
+					HandleInstantiate(data);
+				}));
 				break;
 			case MessageType.SyncTransform:
 				// TODO: Implement Sync Transform
@@ -204,10 +208,10 @@ public class NetworkManager : MonoBehaviour {
 		MessageType messageType = (MessageType) byteReader.ReadByte();
 		int clientID = byteReader.ReadInt();
 
-		foreach(NetworkObject networkObject in m_NetworkObjects) {
-			if(networkObject.clientID == clientID) {
-				m_NetworkObjects.Remove(networkObject);
-				Destroy(networkObject.gameObject);
+		for(int i = m_NetworkObjects.Count - 1; i >= 0; i--) {
+			if(m_NetworkObjects[i].clientID == clientID) {
+				Destroy(m_NetworkObjects[i].gameObject);
+				m_NetworkObjects.RemoveAt(i);
 			}
 		}
 	}
@@ -306,6 +310,8 @@ public class NetworkManager : MonoBehaviour {
 		networkObject.isLocal = false;
 		networkObject.clientID = clientID;
 		networkObject.localID = localID;
+
+		m_NetworkObjects.Add(networkObject);
 
 		return instance;
 	}
