@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using Network;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.Events;
 
 public delegate void Task();
@@ -53,6 +54,9 @@ public class NetworkManager : MonoBehaviour {
 	public UnityEvent onConnected;
 	public UnityEvent onObjectSync;
 
+	[Header("Object Refs")]
+	public Text logText;
+
 	// For safe multithreading works...
 	private Queue<Task> m_TaskQueue = new Queue<Task>();
 	private object m_QueueLock = new object();
@@ -80,6 +84,12 @@ public class NetworkManager : MonoBehaviour {
 		Connect();
 	}
 
+	public void Log(string message) {
+		ScheduleTask(new Task(delegate {
+			logText.text += "\n" + message;
+		}));
+	}
+
 	void InitializeSocket() {
 		m_Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 		m_Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendTimeout, 10000);
@@ -88,13 +98,13 @@ public class NetworkManager : MonoBehaviour {
 
 	void Connect() {
 		try {
-			Debug.Log("Waiting for a connection...");
+			Log("Waiting for a connection...");
 
 			IPAddress ipAddr = IPAddress.Parse(ipAddress);
 			m_Socket.BeginConnect(ipAddr, port, HandleConnected, null);
 		}
 		catch(SocketException e) {
-			Debug.Log("Failed to connect: " + e.ToString());
+			Log("Failed to connect: " + e.ToString());
 		}
 	}
 
@@ -102,7 +112,7 @@ public class NetworkManager : MonoBehaviour {
 		m_Socket.EndConnect(result);
 		m_Socket.NoDelay = true;
 
-		Debug.Log("Connected");
+		Log("Connected");
 
 		ScheduleTask(new Task(delegate {
 			onConnected.Invoke();
@@ -118,11 +128,11 @@ public class NetworkManager : MonoBehaviour {
 	void HandleReceiveData(IAsyncResult result) {
 		int readBytes = m_Socket.EndReceive(result);
 
-		Debug.Log(string.Format("Received {0} bytes.", readBytes));
+		Log(string.Format("Received {0} bytes.", readBytes));
 		ByteReader byteReader = new ByteReader(m_Buffer);
 		MessageType messageType = (MessageType) byteReader.ReadByte();
 
-		Debug.Log("Message Type: " + messageType);
+		Log("Message Type: " + messageType);
 
 		// Handle Messsage
 		DispatchMessage(m_Buffer);
@@ -137,8 +147,8 @@ public class NetworkManager : MonoBehaviour {
 		int clientID = byteReader.ReadInt();
 		int localID = byteReader.ReadInt();
 
-		Debug.Log("Receive Message");
-		Debug.Log("MessageType: " + messageType);
+		Log("Receive Message");
+		Log("MessageType: " + messageType);
 
 		// Dispatch
 		switch(messageType) {
@@ -147,7 +157,9 @@ public class NetworkManager : MonoBehaviour {
 				RequestSyncNetworkObjects();
 				break;
 			case MessageType.ServerRequestObjectSync:
-				CreateNetworkObject(data);
+				ScheduleTask(new Task(delegate {
+					CreateNetworkObject(data);
+				}));
 				break;
 			case MessageType.ServerRequestObjectSyncComplete:
 				HandleNetworkObjectSyncComplete(data);
@@ -173,30 +185,30 @@ public class NetworkManager : MonoBehaviour {
 	void SetClientID(byte[] data) {
 		ByteReader byteReader = new ByteReader(data);
 		MessageType messageType = (MessageType) byteReader.ReadByte();
-		this.clientID = byteReader.ReadInt();
-		Debug.Log("Received ClientID: " + this.clientID);
+		clientID = byteReader.ReadInt();
+		Log("Received ClientID: " + clientID);
 	}
 
 	void RequestSyncNetworkObjects() {
-		Debug.Log("Request Server to Synchronize Network Objects");
+		Log("Request Server to Synchronize Network Objects");
 		SendMessage(MessageType.ClientRequestObjectSync);
 	}
 
 	void CreateNetworkObject(byte[] data) {
 		ByteReader byteReader = new ByteReader(data);
 		MessageType messageType = (MessageType) byteReader.ReadByte();
-		InstantiateType instanceType = (InstantiateType) byteReader.ReadByte();
 		int clientID = byteReader.ReadInt();
 		int localID = byteReader.ReadInt();
+		InstantiateType instanceType = (InstantiateType) byteReader.ReadByte();
 		Vector3 position = byteReader.ReadVector3();
 		Quaternion rotation = byteReader.ReadQuaternion();
 
 		InstantiateFromNetwork(instanceType, clientID, localID, position, rotation);
-		Debug.Log(string.Format("Instantiate Object: {0} {1} {2}", instanceType, clientID, localID));
+		Log(string.Format("Instantiate Object: {0} {1} {2}", instanceType, clientID, localID));
 	}
 
 	void HandleNetworkObjectSyncComplete(byte[] data) {
-		Debug.Log("All Network Objects synchornized.");
+		Log("All Network Objects synchornized.");
 
 		ScheduleTask(new Task(delegate {
 			onObjectSync.Invoke();
@@ -245,12 +257,11 @@ public class NetworkManager : MonoBehaviour {
 
 		// Byte Order
 		// byte MessageType
-		// int clientID
 		// byte[] data
 		byte[] sendingData = new byte[sizeof(byte) + sizeof(int) + data.Length];
 		ByteWriter byteWriter = new ByteWriter(sendingData);
 		byteWriter.WriteByte((byte) messageType);
-		byteWriter.WriteInt(this.clientID);
+		byteWriter.WriteInt(clientID);
 		byteWriter.WriteBytes(data);
 
 		m_Socket.BeginSend(sendingData, 0, sendingData.Length, SocketFlags.None, HandleSendDone, null);
@@ -258,7 +269,7 @@ public class NetworkManager : MonoBehaviour {
 
 	void HandleSendDone(IAsyncResult result) {
 		int byteSent = m_Socket.EndSend(result);
-		Debug.Log(string.Format("Sent {0} bytes.", byteSent));
+		Log(string.Format("Sent {0} bytes.", byteSent));
 	}
 
 	public GameObject Instantiate(InstantiateType instantiateType, Vector3 spawnPos, Quaternion spawnRot) {
@@ -274,8 +285,8 @@ public class NetworkManager : MonoBehaviour {
 		byteWriter.WriteVector3(spawnPos);
 		byteWriter.WriteQuaternion(spawnRot);
 
-		Debug.Log("Instantiating Object...");
-		Debug.Log("Assigned LocalID: " + (localIDCounter));
+		Log("Instantiating Object...");
+		Log("Assigned LocalID: " + (localIDCounter));
 
 		SendMessage(MessageType.Instantiate, sendingData);
 

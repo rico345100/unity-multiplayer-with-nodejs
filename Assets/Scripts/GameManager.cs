@@ -12,11 +12,18 @@ public class GameManager : MonoBehaviour {
 
 	void Start() {
 		NetworkManager.Instance.onConnected.AddListener(() => {
-			Debug.Log("Connected.");
-			Debug.Log("Creating Player...");
+			NetworkManager.Instance.Log("Connected.");
+			NetworkManager.Instance.Log("Creating Player...");
 
 			lobbyCam.SetActive(false);
-			NetworkManager.Instance.Instantiate(InstantiateType.Player, spawnPoint.position, spawnPoint.rotation);
+
+			// Spawn next to the previous player
+			Vector3 newPos = new Vector3(
+				spawnPoint.position.x + (NetworkManager.Instance.clientID * 10),
+				spawnPoint.position.y,
+				spawnPoint.position.z
+			);
+			NetworkManager.Instance.Instantiate(InstantiateType.Player, newPos, spawnPoint.rotation);
 		});
 	}
 }
