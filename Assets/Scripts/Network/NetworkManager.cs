@@ -126,13 +126,14 @@ public class NetworkManager : MonoBehaviour {
 	}
 
 	void HandleReceiveData(IAsyncResult result) {
-		int readBytes = m_Socket.EndReceive(result);
+		m_Socket.EndReceive(result);
 
-		Log(string.Format("Received {0} bytes.", readBytes));
 		ByteReader byteReader = new ByteReader(m_Buffer);
 		MessageType messageType = (MessageType) byteReader.ReadByte();
 
-		Log("Message Type: " + messageType);
+		if(messageType != MessageType.SyncTransform) {
+			Log("Message Type: " + messageType);
+		}
 
 		// Handle Messsage
 		DispatchMessage(m_Buffer);
@@ -144,38 +145,45 @@ public class NetworkManager : MonoBehaviour {
 	void DispatchMessage(byte[] data) {
 		ByteReader byteReader = new ByteReader(data);
 		MessageType messageType = (MessageType) byteReader.ReadByte();
-		int clientID = byteReader.ReadInt();
-		int localID = byteReader.ReadInt();
+		byteReader.ReadInt();	// ClientID
+		byteReader.ReadInt();	// LocalID
 
-		Log("Receive Message");
-		Log("MessageType: " + messageType);
+		if(messageType != MessageType.SyncTransform) {
+			Log("Receive Message");
+			Log("MessageType: " + messageType);
+		}
+
+		// Prevent reference changes
+		byte[] clonedData = (byte[]) data.Clone();
 
 		// Dispatch
 		switch(messageType) {
 			case MessageType.AssignID:
-				SetClientID(data);
+				SetClientID(clonedData);
 				RequestSyncNetworkObjects();
 				break;
 			case MessageType.ServerRequestObjectSync:
 				ScheduleTask(new Task(delegate {
-					CreateNetworkObject(data);
+					CreateNetworkObject(clonedData);
 				}));
 				break;
 			case MessageType.ServerRequestObjectSyncComplete:
-				HandleNetworkObjectSyncComplete(data);
+				HandleNetworkObjectSyncComplete(clonedData);
 				break;
 			case MessageType.DestroyNetworkObjects:
 				ScheduleTask(new Task(delegate {
-					DestroyNetworkObjects(data);
+					DestroyNetworkObjects(clonedData);
 				}));
 				break;
 			case MessageType.Instantiate:
 				ScheduleTask(new Task(delegate {
-					HandleInstantiate(data);
+					HandleInstantiate(clonedData);
 				}));
 				break;
 			case MessageType.SyncTransform:
-				// TODO: Implement Sync Transform
+				ScheduleTask(new Task(delegate {
+					HandleSyncTransform(clonedData);
+				}));
 				break;
 			default:
 				throw new System.InvalidOperationException("Unknown MessageType " + messageType);
@@ -184,8 +192,9 @@ public class NetworkManager : MonoBehaviour {
 
 	void SetClientID(byte[] data) {
 		ByteReader byteReader = new ByteReader(data);
-		MessageType messageType = (MessageType) byteReader.ReadByte();
-		clientID = byteReader.ReadInt();
+		byteReader.ReadByte();	// MessageType
+		this.clientID = byteReader.ReadInt();
+
 		Log("Received ClientID: " + clientID);
 	}
 
@@ -196,15 +205,15 @@ public class NetworkManager : MonoBehaviour {
 
 	void CreateNetworkObject(byte[] data) {
 		ByteReader byteReader = new ByteReader(data);
-		MessageType messageType = (MessageType) byteReader.ReadByte();
+		byteReader.ReadByte();
 		int clientID = byteReader.ReadInt();
 		int localID = byteReader.ReadInt();
 		InstantiateType instanceType = (InstantiateType) byteReader.ReadByte();
 		Vector3 position = byteReader.ReadVector3();
 		Quaternion rotation = byteReader.ReadQuaternion();
 
-		InstantiateFromNetwork(instanceType, clientID, localID, position, rotation);
 		Log(string.Format("Instantiate Object: {0} {1} {2}", instanceType, clientID, localID));
+		InstantiateFromNetwork(instanceType, clientID, localID, position, rotation);
 	}
 
 	void HandleNetworkObjectSyncComplete(byte[] data) {
@@ -217,7 +226,7 @@ public class NetworkManager : MonoBehaviour {
 
 	void DestroyNetworkObjects(byte[] data) {
 		ByteReader byteReader = new ByteReader(data);
-		MessageType messageType = (MessageType) byteReader.ReadByte();
+		byteReader.ReadByte();	// MessageType
 		int clientID = byteReader.ReadInt();
 
 		for(int i = m_NetworkObjects.Count - 1; i >= 0; i--) {
@@ -230,7 +239,7 @@ public class NetworkManager : MonoBehaviour {
 
 	void HandleInstantiate(byte[] data) {
 		ByteReader byteReader = new ByteReader(data);
-		MessageType messageType = (MessageType) byteReader.ReadByte();
+		byteReader.ReadByte();	// MessageType
 		int clientID = byteReader.ReadInt();
 		int localID = byteReader.ReadInt();
 		InstantiateType instanceType = (InstantiateType) byteReader.ReadByte();
@@ -268,8 +277,7 @@ public class NetworkManager : MonoBehaviour {
 	}
 
 	void HandleSendDone(IAsyncResult result) {
-		int byteSent = m_Socket.EndSend(result);
-		Log(string.Format("Sent {0} bytes.", byteSent));
+		m_Socket.EndSend(result);
 	}
 
 	public GameObject Instantiate(InstantiateType instantiateType, Vector3 spawnPos, Quaternion spawnRot) {
@@ -325,6 +333,20 @@ public class NetworkManager : MonoBehaviour {
 		m_NetworkObjects.Add(networkObject);
 
 		return instance;
+	}
+
+	void HandleSyncTransform(byte[] data) {
+		ByteReader byteReader = new ByteReader(data);
+		byteReader.ReadByte();
+		int cid = byteReader.ReadInt();
+		int lid = byteReader.ReadInt();
+		
+		foreach(NetworkObject networkObject in m_NetworkObjects) {
+			if(networkObject.clientID == cid && networkObject.localID == lid) {
+				networkObject.ReceiveBytes(data);
+				break;
+			}
+		}
 	}
 
 	void OnApplicationQuit() {
